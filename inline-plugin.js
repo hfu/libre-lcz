@@ -1,3 +1,8 @@
+// Helper function to escape special regex characters
+function escapeRegexChars(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 export default function inlineAssetsPlugin() {
   return {
     name: 'inline-assets',
@@ -15,7 +20,7 @@ export default function inlineAssetsPlugin() {
         cssAssets.forEach((cssFile) => {
           const cssChunk = bundle[cssFile];
           const cssContent = cssChunk.source;
-          const cssFileName = cssFile.split('/').pop().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const cssFileName = escapeRegexChars(cssFile.split('/').pop());
           
           html = html.replace(
             new RegExp(`<link[^>]*?href="[^"]*${cssFileName}"[^>]*?>`, 'g'),
@@ -31,7 +36,7 @@ export default function inlineAssetsPlugin() {
           // Remove __VITE_PRELOAD__ references since we're inlining everything
           jsContent = jsContent.replace(/__VITE_PRELOAD__/g, '(()=>[])');
           
-          const jsFileName = jsFile.split('/').pop().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const jsFileName = escapeRegexChars(jsFile.split('/').pop());
           
           const scriptRegex = new RegExp(`<script[^>]*?src="[^"]*${jsFileName}"[^>]*?></script>`, 'g');
           

@@ -12,7 +12,7 @@ const LCZ_COLORS = {
   2: [215, 48, 39],     // Compact midrise
   3: [244, 109, 67],    // Compact low-rise
   4: [254, 224, 139],   // Open high-rise
-  5: [255, 255, 191],   // Open midrise
+  5: [254, 254, 190],   // Open midrise (slightly different from D)
   6: [217, 239, 139],   // Open low-rise
   7: [102, 189, 99],    // Lightweight low-rise
   8: [26, 152, 80],     // Large low-rise
