@@ -1,0 +1,121 @@
+import './style.css';
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import { cogProtocol, setColorFunction } from '@geomatico/maplibre-cog-protocol';
+
+// Register the COG protocol
+maplibregl.addProtocol('cog', cogProtocol);
+
+// LCZ color map (standard colors from LCZ Generator)
+const LCZ_COLORS = {
+  1: [165, 0, 38],      // Compact high-rise
+  2: [215, 48, 39],     // Compact midrise
+  3: [244, 109, 67],    // Compact low-rise
+  4: [254, 224, 139],   // Open high-rise
+  5: [255, 255, 191],   // Open midrise
+  6: [217, 239, 139],   // Open low-rise
+  7: [102, 189, 99],    // Lightweight low-rise
+  8: [26, 152, 80],     // Large low-rise
+  9: [166, 217, 106],   // Sparsely built
+  10: [110, 1, 107],    // Heavy industry
+  11: [0, 104, 55],     // Dense trees (A)
+  12: [49, 163, 84],    // Scattered trees (B)
+  13: [184, 225, 134],  // Bush, scrub (C)
+  14: [255, 255, 191],  // Low plants (D)
+  15: [253, 174, 97],   // Bare rock or paved (E)
+  16: [244, 109, 67],   // Bare soil or sand (F)
+  17: [69, 117, 180]    // Water (G)
+};
+
+// COG URL
+const cogUrl = 'https://lcz-generator.rub.de/cogs/lcz_filter_v3_cog.tif';
+
+// Set custom color function for LCZ categorical data
+setColorFunction(cogUrl, (pixel, color, metadata) => {
+  const value = pixel[0];
+  
+  // Check if it's noData
+  if (value === metadata.noData || value === 0) {
+    color.set([0, 0, 0, 0]); // Transparent
+    return;
+  }
+  
+  // Apply LCZ color scheme
+  const lczColor = LCZ_COLORS[value];
+  if (lczColor) {
+    color.set([lczColor[0], lczColor[1], lczColor[2], 255]);
+  } else {
+    color.set([0, 0, 0, 0]); // Transparent for unknown values
+  }
+});
+
+// Initialize map
+const map = new maplibregl.Map({
+  container: 'map',
+  style: {
+    version: 8,
+    sources: {},
+    layers: [
+      {
+        id: 'background',
+        type: 'background',
+        paint: {
+          'background-color': '#f0f0f0'
+        }
+      }
+    ]
+  },
+  center: [7.5, 51.0],
+  zoom: 6,
+  pitch: 60, // Add pitch for 3D view
+  maxZoom: 18,
+  minZoom: 0,
+  maxPitch: 85
+});
+
+// Add navigation controls
+map.addControl(new maplibregl.NavigationControl());
+
+// Add sources and layers when map loads
+map.on('load', () => {
+  // Add Mapterhorn terrain source using the TileJSON endpoint
+  // This provides 512x512 WebP Terrarium-encoded terrain tiles
+  map.addSource('mapterhorn-terrain', {
+    type: 'raster-dem',
+    url: 'https://tunnel.optgeo.org/martin/mapterhorn',
+    tileSize: 512
+  });
+
+  // Add LCZ COG using the cog:// protocol with custom color function
+  map.addSource('lcz', {
+    type: 'raster',
+    url: `cog://${cogUrl}`,
+    tileSize: 256
+  });
+
+  // Add LCZ raster layer
+  map.addLayer({
+    id: 'lcz-layer',
+    type: 'raster',
+    source: 'lcz',
+    paint: {
+      'raster-opacity': 0.7
+    }
+  });
+
+  // Set 3D terrain using Mapterhorn
+  map.setTerrain({
+    source: 'mapterhorn-terrain',
+    exaggeration: 1.5
+  });
+  
+  // Add hillshade layer for better terrain visualization
+  map.addLayer({
+    id: 'hillshade',
+    type: 'hillshade',
+    source: 'mapterhorn-terrain',
+    paint: {
+      'hillshade-exaggeration': 0.3
+    }
+  }, 'lcz-layer'); // Add before LCZ layer
+});
