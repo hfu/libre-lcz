@@ -23,7 +23,7 @@ export default function inlineAssetsPlugin() {
           const cssFileName = escapeRegexChars(cssFile.split('/').pop());
           
           html = html.replace(
-            new RegExp(`<link[^>]*?href="[^"]*${cssFileName}"[^>]*?>`, 'g'),
+            new RegExp(`<link[^>]*?href=["'][^"']*${cssFileName}["'][^>]*?>`, 'g'),
             `<style>${cssContent}</style>`
           );
         });
@@ -34,7 +34,7 @@ export default function inlineAssetsPlugin() {
           let jsContent = jsChunk.code;
           
           // Remove __VITE_PRELOAD__ references since we're inlining everything
-          jsContent = jsContent.replace(/__VITE_PRELOAD__/g, '(()=>[])');
+          jsContent = jsContent.replace(/__VITE_PRELOAD__/g, '(()=>({}))');
           
           const jsFileName = escapeRegexChars(jsFile.split('/').pop());
           

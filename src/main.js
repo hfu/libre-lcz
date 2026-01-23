@@ -23,9 +23,13 @@ const LCZ_COLORS = {
   13: [184, 225, 134],  // Bush, scrub (C)
   14: [255, 255, 191],  // Low plants (D)
   15: [253, 174, 97],   // Bare rock or paved (E)
-  16: [244, 109, 67],   // Bare soil or sand (F)
+  16: [253, 246, 179],  // Bare soil or sand (F)
   17: [69, 117, 180]    // Water (G)
 };
+
+// Terrain configuration constants
+const TERRAIN_EXAGGERATION = 1.0;
+const HILLSHADE_EXAGGERATION = 0.3;
 
 // COG URL
 const cogUrl = 'https://lcz-generator.rub.de/cogs/lcz_filter_v3_cog.tif';
@@ -65,7 +69,7 @@ const map = new maplibregl.Map({
       }
     ]
   },
-  center: [7.5, 51.0],
+  center: [7.5, 51.0], // Default center: Central Europe (Germany/Netherlands border region)
   zoom: 6,
   pitch: 60, // Add pitch for 3D view
   maxZoom: 18,
@@ -75,6 +79,11 @@ const map = new maplibregl.Map({
 
 // Add navigation controls
 map.addControl(new maplibregl.NavigationControl());
+
+// Add error handler for map loading failures
+map.on('error', (e) => {
+  console.error('Map error:', e.error);
+});
 
 // Add sources and layers when map loads
 map.on('load', () => {
@@ -106,7 +115,7 @@ map.on('load', () => {
   // Set 3D terrain using Mapterhorn
   map.setTerrain({
     source: 'mapterhorn-terrain',
-    exaggeration: 1.5
+    exaggeration: TERRAIN_EXAGGERATION
   });
   
   // Add hillshade layer for better terrain visualization
@@ -115,7 +124,7 @@ map.on('load', () => {
     type: 'hillshade',
     source: 'mapterhorn-terrain',
     paint: {
-      'hillshade-exaggeration': 0.3
+      'hillshade-exaggeration': HILLSHADE_EXAGGERATION
     }
   }, 'lcz-layer'); // Add before LCZ layer
 });

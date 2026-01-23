@@ -3,10 +3,33 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Interactive 3D map visualizing Local Climate Zones with terrain">
   <title>LCZ × COG × MapLibre × Mapterhorn</title>
+  <style>
+    .visually-hidden {
+      border: 0;
+      clip: rect(0 0 0 0);
+      height: 1px;
+      margin: -1px;
+      overflow: hidden;
+      padding: 0;
+      position: absolute;
+      width: 1px;
+      white-space: nowrap;
+    }
+  </style>
 </head>
 <body>
-  <div id="map"></div>
+  <p id="map-instructions" class="visually-hidden">
+    Interactive map. Use arrow keys to pan and the plus and minus keys to zoom. Press Tab to move focus out of the map.
+  </p>
+  <div
+    id="map"
+    role="application"
+    aria-label="Interactive map showing LCZ × COG × MapLibre × Mapterhorn data"
+    aria-describedby="map-instructions"
+    tabindex="0">
+  </div>
   <script type="module" src="/main.js"></script>
 </body>
 </html>
