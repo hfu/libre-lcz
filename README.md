@@ -8,8 +8,6 @@ A clean, single-file web map application visualizing Local Climate Zones (LCZ) d
 
 Cloud Optimized GeoTIFF（COG）形式のLocal Climate Zones（LCZ）データを、Mapterhornによる3D地形と組み合わせて可視化する、クリーンで単一ファイルのWebマップアプリケーションです。MapLibre GL JSとViteで構築し、GitHub Pagesにデプロイします。
 
-![Map Screenshot](https://github.com/user-attachments/assets/d1544fc8-b902-4428-8372-8072809ad5a9)
-
 ## Concept / コンセプト
 
 ### What is this? / これは何ですか？
@@ -87,13 +85,13 @@ The entire application is bundled into a single `index.html` file (~1.4MB) with 
 
 ### LCZ Visualization / LCZ可視化
 
-- **Data Source**: https://lcz-generator.rub.de/cogs/lcz_filter_v3_cog.tif
+- **Data Source**: [The global LCZ Map v3](https://lcz-generator.rub.de/global-lcz-map)
   
-  **データソース**: https://lcz-generator.rub.de/cogs/lcz_filter_v3_cog.tif
+  **データソース**: [The global LCZ Map v3](https://lcz-generator.rub.de/global-lcz-map)
 
-- **Format**: Single-band categorical Cloud Optimized GeoTIFF
+- **Format**: Single-band categorical Cloud Optimized GeoTIFF (EPSG:3857 Web Mercator projection)
   
-  **形式**: シングルバンドカテゴリカルCloud Optimized GeoTIFF
+  **形式**: シングルバンドカテゴリカルCloud Optimized GeoTIFF（EPSG:3857 Web Mercator投影）
 
 - **Color Scheme**: Standard LCZ colors as defined by the LCZ Generator
   
@@ -105,9 +103,9 @@ The entire application is bundled into a single `index.html` file (~1.4MB) with 
 
 ### 3D Terrain / 3D地形
 
-- **Provider**: Mapterhorn via tunnel.optgeo.org/martin
+- **Provider**: Mapterhorn
   
-  **プロバイダー**: tunnel.optgeo.org/martin経由のMapterhorn
+  **プロバイダー**: Mapterhorn
 
 - **Format**: 512×512 WebP tiles, Terrarium encoding
   
@@ -117,9 +115,9 @@ The entire application is bundled into a single `index.html` file (~1.4MB) with 
   
   **ソース**: グローバルDEMデータ（ESA Copernicus GLO-30）
 
-- **Implementation**: Raster-DEM source with hillshade layer and terrain exaggeration
+- **Implementation**: Raster-DEM source with hillshade layer and terrain exaggeration (1.0× vertical scale)
   
-  **実装**: 陰影起伏図レイヤーと地形誇張を伴うRaster-DEMソース
+  **実装**: 陰影起伏図レイヤーと地形誇張を伴うRaster-DEMソース（垂直スケール 1.0×）
 
 ### Map Controls / マップコントロール
 
@@ -127,13 +125,17 @@ The entire application is bundled into a single `index.html` file (~1.4MB) with 
   
   **ナビゲーション**: ズームイン/アウト、ピッチ/回転コントロール
 
-- **3D View**: 60° pitch with adjustable bearing
+- **3D View**: 60° pitch with adjustable bearing, globe projection support
   
-  **3Dビュー**: 調整可能な方位角を持つ60°ピッチ
+  **3Dビュー**: 調整可能な方位角を持つ60°ピッチ、地球儀投影対応
 
-- **Terrain exaggeration**: 1.5× vertical scale for better visibility
+- **Layer Control**: Toggle LCZ and hillshade layer visibility, adjust opacity
   
-  **地形誇張**: より良い可視性のための1.5倍の垂直スケール
+  **レイヤーコントロール**: LCZレイヤーと陰影起伏図レイヤーの表示/非表示切り替えと透明度調整
+
+- **Interactive Hover**: Display LCZ classification name and value on hover over data
+  
+  **インタラクティブホバー**: データの上にマウスホバーしたときLCZ分類名と値を表示
 
 ## Implementation Details / 実装の詳細
 
@@ -143,9 +145,13 @@ The entire application is bundled into a single `index.html` file (~1.4MB) with 
   
   **MapLibre GL JS**: オープンソースマップレンダリングエンジン
 
-- **@geomatico/maplibre-cog-protocol**: COG protocol handler for MapLibre
+- **@geomatico/maplibre-cog-protocol**: COG protocol handler for MapLibre with locationValues for interactive queries
   
-  **@geomatico/maplibre-cog-protocol**: MapLibre用COGプロトコルハンドラー
+  **@geomatico/maplibre-cog-protocol**: MapLibreのCOGプロトコルハンドラー、locationValuesによるインタラクティブクエリ機能付き
+
+- **maplibre-gl-layer-control**: Layer visibility and opacity control panel
+  
+  **maplibre-gl-layer-control**: レイヤーの表示/非表示と透明度を制御するコントロールパネル
 
 - **Vite**: Modern build tool for bundling
   
@@ -205,6 +211,16 @@ const LCZ_COLORS = {
   17: [69, 117, 180]    // Water (G) / 水域
 };
 ```
+
+### COG Preparation (EPSG:3857) / COG前処理
+
+COG は Web Mercator (EPSG:3857) である必要があるため、元データ (EPSG:4326) を次のコマンドで再投影・再パッケージしました：
+
+```bash
+gdalwarp -t_srs EPSG:3857 -of COG -co COMPRESS=LZW -co BIGTIFF=YES lcz_filter_v3_cog.tif lcz_filter_v3_cog_3857.tif
+```
+
+これにより、@geomatico/maplibre-cog-protocol が要求する EPSG:3857 投影の COG を生成しています。ファイルサイズが大きいため、`BIGTIFF=YES` オプションが必要です。
 
 ### Mapterhorn Terrain Integration / Mapterhorn地形統合
 

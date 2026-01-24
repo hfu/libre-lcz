@@ -1,7 +1,9 @@
 import './style.css';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { cogProtocol, setColorFunction } from '@geomatico/maplibre-cog-protocol';
+import { cogProtocol, setColorFunction, locationValues } from '@geomatico/maplibre-cog-protocol';
+import { LayerControl } from 'maplibre-gl-layer-control';
+import 'maplibre-gl-layer-control/style.css';
 
 // Register the COG protocol
 maplibregl.addProtocol('cog', cogProtocol);
@@ -27,12 +29,33 @@ const LCZ_COLORS = {
   17: [69, 117, 180]    // Water (G)
 };
 
+// LCZ classification names
+const LCZ_NAMES = {
+  1: 'Compact high-rise',
+  2: 'Compact midrise',
+  3: 'Compact low-rise',
+  4: 'Open high-rise',
+  5: 'Open midrise',
+  6: 'Open low-rise',
+  7: 'Lightweight low-rise',
+  8: 'Large low-rise',
+  9: 'Sparsely built',
+  10: 'Heavy industry',
+  11: 'Dense trees',
+  12: 'Scattered trees',
+  13: 'Bush, scrub',
+  14: 'Low plants',
+  15: 'Bare rock or paved',
+  16: 'Bare soil or sand',
+  17: 'Water'
+};
+
 // Terrain configuration constants
 const TERRAIN_EXAGGERATION = 1.0;
 const HILLSHADE_EXAGGERATION = 0.3;
 
 // COG URL
-const cogUrl = 'https://lcz-generator.rub.de/cogs/lcz_filter_v3_cog.tif';
+const cogUrl = 'https://tunnel.optgeo.org/lcz_filter_v3_cog_3857.tif';
 
 // Set custom color function for LCZ categorical data
 setColorFunction(cogUrl, (pixel, color, metadata) => {
@@ -72,6 +95,7 @@ const map = new maplibregl.Map({
   center: [7.5, 51.0], // Default center: Central Europe (Germany/Netherlands border region)
   zoom: 6,
   pitch: 60, // Add pitch for 3D view
+  hash: 'map',
   maxZoom: 18,
   minZoom: 0,
   maxPitch: 85
@@ -82,6 +106,10 @@ map.addControl(new maplibregl.NavigationControl());
 
 // Add error handler for map loading failures
 map.on('error', (e) => {
+  // Ignore known globe projection fog error (fog is not used in this app)
+  if (e.error && e.error.message && e.error.message.includes('calculateFogMatrix')) {
+    return;
+  }
   console.error('Map error:', e.error);
 });
 
@@ -91,15 +119,17 @@ map.on('load', () => {
   // This provides 512x512 WebP Terrarium-encoded terrain tiles
   map.addSource('mapterhorn-terrain', {
     type: 'raster-dem',
-    url: 'https://tunnel.optgeo.org/martin/mapterhorn',
-    tileSize: 512
+    url: 'https://tiles.mapterhorn.com/tilejson.json',
+    tileSize: 512,
+    encoding: 'terrarium'
   });
 
   // Add LCZ COG using the cog:// protocol with custom color function
   map.addSource('lcz', {
     type: 'raster',
     url: `cog://${cogUrl}`,
-    tileSize: 256
+    tileSize: 256,
+    attribution: '<a href="https://lcz-generator.rub.de/global-lcz-map">The global LCZ Map v3</a>'
   });
 
   // Add LCZ raster layer
@@ -119,6 +149,7 @@ map.on('load', () => {
   });
   
   // Add hillshade layer for better terrain visualization
+  // Add after LCZ layer to avoid obscuring the COG data
   map.addLayer({
     id: 'hillshade',
     type: 'hillshade',
@@ -126,5 +157,67 @@ map.on('load', () => {
     paint: {
       'hillshade-exaggeration': HILLSHADE_EXAGGERATION
     }
-  }, 'lcz-layer'); // Add before LCZ layer
+  });
+
+  // Set globe projection at the appropriate time
+  map.setProjection({
+    type: 'globe'
+  });
+
+  // Add layer control for LCZ and hillshade layers
+  const layerControl = new LayerControl({
+    collapsed: true,
+    layers: ['lcz-layer', 'hillshade'],
+    panelWidth: 300,
+    panelMinWidth: 240,
+    panelMaxWidth: 400
+  });
+
+  map.addControl(layerControl, 'top-right');
+
+  // Add hover tooltip for LCZ classification
+  const tooltip = document.createElement('div');
+  tooltip.style.cssText = `
+    position: absolute;
+    display: none;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-family: sans-serif;
+    font-size: 14px;
+    pointer-events: none;
+    z-index: 1000;
+  `;
+  document.body.appendChild(tooltip);
+
+  map.on('mousemove', (e) => {
+    const { lngLat: { lat: latitude, lng: longitude }, point: { x, y } } = e;
+    const zoom = map.getZoom();
+
+    locationValues(cogUrl, { latitude, longitude }, zoom)
+      .then(values => {
+        const lczValue = Math.round(values[0]);
+        
+        if (isNaN(lczValue) || lczValue === 0 || !LCZ_NAMES[lczValue]) {
+          tooltip.style.display = 'none';
+          map.getCanvas().style.cursor = '';
+        } else {
+          tooltip.style.display = 'block';
+          tooltip.style.left = (x + 15) + 'px';
+          tooltip.style.top = (y + 15) + 'px';
+          tooltip.innerHTML = `<strong>LCZ ${lczValue}</strong><br/>${LCZ_NAMES[lczValue]}`;
+          map.getCanvas().style.cursor = 'pointer';
+        }
+      })
+      .catch(() => {
+        tooltip.style.display = 'none';
+        map.getCanvas().style.cursor = '';
+      });
+  });
+
+  map.on('mouseout', () => {
+    tooltip.style.display = 'none';
+    map.getCanvas().style.cursor = '';
+  });
 });
