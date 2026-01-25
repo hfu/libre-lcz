@@ -101,6 +101,40 @@ const map = new maplibregl.Map({
   maxPitch: 85
 });
 
+// Lightweight loading overlay until LCZ tiles are available
+const loadingOverlay = document.createElement('div');
+loadingOverlay.style.cssText = `
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  color: white;
+  font-family: sans-serif;
+  font-size: 18px;
+  z-index: 2000;
+`;
+loadingOverlay.textContent = 'Loading LCZ…';
+document.body.appendChild(loadingOverlay);
+
+const hideLoading = () => {
+  if (loadingOverlay.style.display !== 'none') {
+    loadingOverlay.style.display = 'none';
+    map.off('sourcedata', onSourceData);
+  }
+};
+
+const onSourceData = (e) => {
+  if (e.sourceId === 'lcz' && e.isSourceLoaded) {
+    hideLoading();
+  }
+};
+
+map.on('sourcedata', onSourceData);
+map.once('idle', hideLoading);
+setTimeout(hideLoading, 15000); // failsafe
+
 // Add navigation controls
 map.addControl(new maplibregl.NavigationControl());
 
